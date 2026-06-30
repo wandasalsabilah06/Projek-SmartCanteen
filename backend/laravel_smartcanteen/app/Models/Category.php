@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Category extends Model
+{
+    protected $fillable = [
+        'nama_kategori',
+        'target_jumlah_menu'
+    ];
+
+    public function menus()
+    {
+        return $this->hasMany(Menu::class);
+    }
+}

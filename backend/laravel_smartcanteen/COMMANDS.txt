@@ -1,0 +1,170 @@
+═══════════════════════════════════════════════════════════════
+  🚀 QUICK COMMANDS - ADMIN PANEL
+═══════════════════════════════════════════════════════════════
+
+📦 SETUP AWAL
+═══════════════════════════════════════════════════════════════
+
+# 1. Install dependencies
+composer install
+
+# 2. Copy environment file (jika belum)
+copy .env.example .env
+
+# 3. Generate app key (jika belum)
+php artisan key:generate
+
+# 4. Setup database di .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=smartcanteen
+DB_USERNAME=root
+DB_PASSWORD=
+
+# 5. Jalankan migration
+php artisan migrate
+
+# 6. Jalankan seeder (data awal)
+php artisan db:seed --class=AdminSeeder
+
+# 7. Jalankan server
+php artisan serve
+
+# 8. Buka browser
+http://localhost:8000
+
+
+═══════════════════════════════════════════════════════════════
+  🔄 RESET DATABASE
+═══════════════════════════════════════════════════════════════
+
+# Reset semua & seed ulang
+php artisan migrate:fresh --seed
+
+# Atau manual:
+php artisan migrate:fresh
+php artisan db:seed --class=AdminSeeder
+
+
+═══════════════════════════════════════════════════════════════
+  🧹 CLEAR CACHE
+═══════════════════════════════════════════════════════════════
+
+# Clear all cache
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
+# Atau sekaligus
+php artisan optimize:clear
+
+
+═══════════════════════════════════════════════════════════════
+  📊 INFO & DEBUG
+═══════════════════════════════════════════════════════════════
+
+# Lihat semua routes
+php artisan route:list
+
+# Lihat routes admin saja
+php artisan route:list --path=admin
+
+# Cek database connection
+php artisan migrate:status
+
+# Jalankan tinker (console)
+php artisan tinker
+
+
+═══════════════════════════════════════════════════════════════
+  🗂️ FOLDER PERMISSIONS (Linux/Mac)
+═══════════════════════════════════════════════════════════════
+
+chmod -R 755 storage
+chmod -R 755 bootstrap/cache
+chmod -R 755 public/uploads
+
+
+═══════════════════════════════════════════════════════════════
+  📁 CREATE FOLDERS (jika belum ada)
+═══════════════════════════════════════════════════════════════
+
+# Windows
+mkdir public\uploads\menus
+
+# Linux/Mac
+mkdir -p public/uploads/menus
+
+
+═══════════════════════════════════════════════════════════════
+  🔐 LOGIN INFO
+═══════════════════════════════════════════════════════════════
+
+URL: http://localhost:8000/admin/dashboard
+
+Admin:
+Email: admin@admin.com
+Password: password
+
+User:
+Email: user@test.com
+Password: password
+Role: pelanggan
+
+
+═══════════════════════════════════════════════════════════════
+  🌐 URL ADMIN PANEL
+═══════════════════════════════════════════════════════════════
+
+Dashboard:      http://localhost:8000/admin/dashboard
+Users:          http://localhost:8000/admin/users
+Categories:     http://localhost:8000/admin/categories
+Menus:          http://localhost:8000/admin/menus
+Orders:         http://localhost:8000/admin/orders
+
+
+═══════════════════════════════════════════════════════════════
+  🛠️ TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+# Error: "Class not found"
+composer dump-autoload
+
+# Error: "Permission denied" (Linux/Mac)
+sudo chown -R $USER:www-data storage
+sudo chown -R $USER:www-data bootstrap/cache
+
+# Error: Upload gambar gagal
+# Cek folder public/uploads/menus ada dan writable
+
+# Error: Route not found
+php artisan route:clear
+php artisan cache:clear
+
+# Error: Database connection
+# Cek .env file & pastikan database sudah dibuat
+
+
+═══════════════════════════════════════════════════════════════
+  📝 TAMBAHAN COMMANDS
+═══════════════════════════════════════════════════════════════
+
+# Create new migration
+php artisan make:migration nama_migration
+
+# Create new controller
+php artisan make:controller NamaController
+
+# Create new model
+php artisan make:model NamaModel
+
+# Create seeder
+php artisan make:seeder NamaSeeder
+
+# Run specific seeder
+php artisan db:seed --class=NamaSeeder
+
+
+═══════════════════════════════════════════════════════════════
