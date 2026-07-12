@@ -7,6 +7,7 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/cart/providers/cart_provider.dart';
 import 'features/home/providers/home_provider.dart';
 import 'features/menu/providers/menu_provider.dart';
+import 'features/orders/providers/order_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,9 +25,10 @@ class SmartCanteenApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: MaterialApp.router(
-        title: 'Smart Canteen',
+        title: 'SmartCanteen',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: AppRouter.router,

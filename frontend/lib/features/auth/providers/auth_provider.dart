@@ -1,4 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/network/api_client.dart';
 import '../models/user.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated, loading }
@@ -17,16 +22,20 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
 
-    // TODO: Check token from SharedPreferences
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Mock: simulate logged in user
-    _user = const User(
-      id: '1',
-      name: 'Budi Santoso',
-      email: 'budi@example.com',
-    );
-    _status = AuthStatus.authenticated;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString(AppConstants.userKey);
+      if (userJson != null) {
+        final decoded = jsonDecode(userJson) as Map<String, dynamic>;
+        _user = User.fromJson(decoded);
+        _status = AuthStatus.authenticated;
+        ApiClient.instance.initialize();
+      } else {
+        _status = AuthStatus.unauthenticated;
+      }
+    } catch (_) {
+      _status = AuthStatus.unauthenticated;
+    }
     notifyListeners();
   }
 
@@ -36,18 +45,54 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Call auth repository
-      await Future.delayed(const Duration(seconds: 1));
-      _user = const User(
-        id: '1',
-        name: 'Budi Santoso',
-        email: 'budi@example.com',
+      // Pastikan ApiClient sudah diinit
+      ApiClient.instance.initialize();
+
+      final response = await ApiClient.instance.dio.post(
+        '/login',
+        data: {'email': email, 'password': password},
       );
+
+      final data = response.data as Map<String, dynamic>;
+      final userMap = data['user'] as Map<String, dynamic>;
+      _user = User.fromJson(userMap);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(AppConstants.userKey, jsonEncode(_user!.toJson()));
+
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
+    } on DioException catch (e) {
+      // Baca pesan error dari response backend jika ada
+      final responseData = e.response?.data;
+      String msg;
+      if (responseData is Map && responseData['message'] != null) {
+        msg = responseData['message'].toString();
+      } else if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.unknown) {
+        msg =
+            'Tidak dapat terhubung ke server.\nPastikan backend berjalan di port 8000.';
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        msg = 'Koneksi timeout. Coba lagi.';
+      } else {
+        msg = 'Email atau password salah';
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          'Login error: ${e.type} | ${e.message} | ${e.response?.data}',
+        );
+      }
+
+      _errorMessage = msg;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _errorMessage = e.toString();
+      if (kDebugMode) debugPrint('Login unexpected error: $e');
+      _errorMessage = 'Terjadi kesalahan. Coba lagi.';
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
@@ -55,7 +100,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // TODO: Clear token from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(AppConstants.userKey);
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();

@@ -9,17 +9,10 @@ class CurrencyFormatter {
     decimalDigits: 0,
   );
 
-  static final _usdFormatter = NumberFormat.currency(
-    locale: 'en_US',
-    symbol: '\$',
-    decimalDigits: 2,
-  );
-
   static String toIDR(num amount) => _idrFormatter.format(amount);
 
-  static String toUSD(num amount) => _usdFormatter.format(amount);
+  // Alias toUSD untuk tampilan - pakai format IDR karena backend pakai Rupiah
+  static String toUSD(num amount) => _idrFormatter.format(amount);
 
-  static String format(num amount, {String currency = 'IDR'}) {
-    return currency == 'IDR' ? toIDR(amount) : toUSD(amount);
-  }
+  static String format(num amount) => _idrFormatter.format(amount);
 }

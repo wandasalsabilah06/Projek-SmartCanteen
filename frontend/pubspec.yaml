@@ -11,25 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-
-  # State Management
   provider: ^6.1.2
-
-  # Navigation
   go_router: ^14.6.3
-
-  # Network
   dio: ^5.7.0
-
-  # Local Storage
   shared_preferences: ^2.3.3
-
-  # UI Helpers
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
   flutter_rating_bar: ^4.0.1
-
-  # Utils
   intl: ^0.19.0
   equatable: ^2.0.5
 
@@ -37,9 +25,27 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
 
+# ── App Icon Config ───────────────────────────────────────────────────────────
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/logoo.jpg"
+  min_sdk_android: 21
+  # Adaptive icon Android (API 26+)
+  adaptive_icon_background: "#FFF7F1"
+  adaptive_icon_foreground: "assets/logoo.jpg"
+  # Web
+  web:
+    generate: true
+    image_path: "assets/logoo.jpg"
+    background_color: "#FFF7F1"
+    theme_color: "#E65100"
+
+# ── Flutter Assets ────────────────────────────────────────────────────────────
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
+    - assets/logoo.jpg
     - assets/icons/

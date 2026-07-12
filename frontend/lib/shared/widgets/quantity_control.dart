@@ -12,7 +12,7 @@ class QuantityControl extends StatelessWidget {
     required this.quantity,
     required this.onIncrement,
     required this.onDecrement,
-    this.size = 28,
+    this.size = 30,
   });
 
   @override
@@ -20,48 +20,46 @@ class QuantityControl extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _ControlButton(
+        _CircleButton(
           icon: Icons.remove,
           onTap: onDecrement,
           size: size,
-          isDestructive: quantity <= 1,
+          filled: false,
         ),
         SizedBox(
-          width: 32,
+          width: 36,
           child: Text(
             '$quantity',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
+            style: TextStyle(
+              fontSize: size * 0.53,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
         ),
-        _ControlButton(
+        _CircleButton(
           icon: Icons.add,
           onTap: onIncrement,
           size: size,
-          isPrimary: true,
+          filled: true,
         ),
       ],
     );
   }
 }
 
-class _ControlButton extends StatelessWidget {
+class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final double size;
-  final bool isPrimary;
-  final bool isDestructive;
+  final bool filled;
 
-  const _ControlButton({
+  const _CircleButton({
     required this.icon,
     required this.onTap,
     required this.size,
-    this.isPrimary = false,
-    this.isDestructive = false,
+    required this.filled,
   });
 
   @override
@@ -72,13 +70,13 @@ class _ControlButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: isPrimary ? AppColors.primary : AppColors.inputFill,
+          color: filled ? AppColors.primary : const Color(0xFFF0EBE6),
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
           size: size * 0.55,
-          color: isPrimary ? Colors.white : AppColors.textSecondary,
+          color: filled ? Colors.white : AppColors.textSecondary,
         ),
       ),
     );

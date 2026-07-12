@@ -1,27 +1,29 @@
 import 'package:equatable/equatable.dart';
 
 class User extends Equatable {
-  final String id;
+  final int id;
   final String name;
   final String email;
+  final String role;
   final String? avatarUrl;
-  final String? phone;
 
   const User({
     required this.id,
     required this.name,
     required this.email,
+    this.role = 'pelanggan',
     this.avatarUrl,
-    this.phone,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as String,
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.parse(json['id'].toString()),
       name: json['name'] as String,
       email: json['email'] as String,
+      role: json['role'] as String? ?? 'pelanggan',
       avatarUrl: json['avatar_url'] as String?,
-      phone: json['phone'] as String?,
     );
   }
 
@@ -29,12 +31,13 @@ class User extends Equatable {
     'id': id,
     'name': name,
     'email': email,
+    'role': role,
     'avatar_url': avatarUrl,
-    'phone': phone,
   };
 
   String get firstName => name.split(' ').first;
+  bool get isAdmin => role == 'admin';
 
   @override
-  List<Object?> get props => [id, name, email, avatarUrl, phone];
+  List<Object?> get props => [id, name, email, role, avatarUrl];
 }

@@ -1,62 +1,104 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/network/api_client.dart';
 import '../models/menu_item.dart';
+import '../models/category.dart';
 
 class MenuProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   List<MenuItem> _items = [];
+  List<MenuCategory> _categories = [];
   MenuItem? _selectedItem;
+  int _selectedCategoryId = 0;
   String _searchQuery = '';
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<MenuItem> get items => _items;
+  List<MenuCategory> get categories => _categories;
   MenuItem? get selectedItem => _selectedItem;
+  int get selectedCategoryId => _selectedCategoryId;
   String get searchQuery => _searchQuery;
 
   List<MenuItem> get filteredItems {
-    if (_searchQuery.isEmpty) return _items;
-    final query = _searchQuery.toLowerCase();
-    return _items
-        .where(
-          (item) =>
-              item.name.toLowerCase().contains(query) ||
-              item.description.toLowerCase().contains(query) ||
-              item.category.toLowerCase().contains(query),
-        )
-        .toList();
+    var result = _items;
+    if (_selectedCategoryId != 0) {
+      result = result
+          .where((i) => i.categoryId == _selectedCategoryId)
+          .toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result
+          .where(
+            (i) =>
+                i.name.toLowerCase().contains(q) ||
+                i.description.toLowerCase().contains(q) ||
+                i.categoryName.toLowerCase().contains(q),
+          )
+          .toList();
+    }
+    return result;
   }
 
-  Future<void> loadMenuItems({String? category}) async {
+  /// Bangun daftar kategori unik dari list menu (tidak perlu endpoint /categories)
+  void _buildCategoriesFromItems() {
+    final catMap = <int, MenuCategory>{};
+    for (final m in _items) {
+      if (m.categoryId > 0 && !catMap.containsKey(m.categoryId)) {
+        catMap[m.categoryId] = MenuCategory(
+          id: m.categoryId,
+          name: m.categoryName,
+          icon: MenuCategory.iconForName(m.categoryName),
+        );
+      }
+    }
+    _categories = catMap.values.toList();
+  }
+
+  Future<void> loadMenuItems({int? categoryId, String? category}) async {
     _isLoading = true;
     _errorMessage = null;
+    if (categoryId != null) _selectedCategoryId = categoryId;
     notifyListeners();
 
     try {
-      // TODO: Replace with actual repository call
-      await Future.delayed(const Duration(milliseconds: 600));
-      _items = _mockItems();
+      final response = await ApiClient.instance.dio.get('/menus');
+      final list = response.data as List<dynamic>;
+      _items = list
+          .map((e) => MenuItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+      // Bangun kategori dari menu (tidak perlu endpoint terpisah)
+      _buildCategoriesFromItems();
     } catch (e) {
       _errorMessage = e.toString();
+      if (kDebugMode) debugPrint('MenuProvider.loadMenuItems error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> loadMenuDetail(String id) async {
+  Future<void> loadMenuDetail(int id) async {
     _isLoading = true;
+    _selectedItem = null;
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(milliseconds: 400));
-      _selectedItem = _mockItems().firstWhere((item) => item.id == id);
+      final response = await ApiClient.instance.dio.get('/menus/$id');
+      _selectedItem = MenuItem.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
       _errorMessage = e.toString();
+      if (kDebugMode) debugPrint('MenuProvider.loadMenuDetail error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void selectCategory(int categoryId) {
+    _selectedCategoryId = categoryId;
+    notifyListeners();
   }
 
   void search(String query) {
@@ -68,63 +110,4 @@ class MenuProvider extends ChangeNotifier {
     _searchQuery = '';
     notifyListeners();
   }
-
-  List<MenuItem> _mockItems() => [
-    const MenuItem(
-      id: '1',
-      name: 'Mediterranean Bowl',
-      description: 'Fresh quinoa, avocado, and chickpeas with tahini sauce.',
-      price: 12.50,
-      imageUrl:
-          'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
-      category: 'main_course',
-      rating: 4.8,
-      reviewCount: 320,
-      isFeatured: true,
-    ),
-    const MenuItem(
-      id: '2',
-      name: 'Signature Burger',
-      description: 'Premium beef patty with fresh vegetables and aged cheddar.',
-      price: 15.00,
-      imageUrl:
-          'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
-      category: 'main_course',
-      rating: 4.6,
-      reviewCount: 210,
-    ),
-    const MenuItem(
-      id: '3',
-      name: 'Spicy Shio Ramen',
-      description: 'Rich broth with tender noodles and soft-boiled egg.',
-      price: 14.00,
-      imageUrl:
-          'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400',
-      category: 'main_course',
-      rating: 4.7,
-      reviewCount: 1200,
-    ),
-    const MenuItem(
-      id: '4',
-      name: 'Berry Pancakes',
-      description: 'Fluffy pancakes topped with fresh mixed berries.',
-      price: 9.50,
-      imageUrl:
-          'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400',
-      category: 'desserts',
-      rating: 4.9,
-      reviewCount: 800,
-    ),
-    const MenuItem(
-      id: '5',
-      name: 'Mango Smoothie',
-      description: 'Fresh mango blended with yogurt and honey.',
-      price: 6.00,
-      imageUrl:
-          'https://images.unsplash.com/photo-1546173159-315724a31696?w=400',
-      category: 'drinks',
-      rating: 4.5,
-      reviewCount: 450,
-    ),
-  ];
 }

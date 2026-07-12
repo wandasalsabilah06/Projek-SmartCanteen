@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
@@ -10,11 +11,18 @@ class ApiClient {
   static final ApiClient _instance = ApiClient._();
   static ApiClient get instance => _instance;
 
-  late final Dio _dio;
+  Dio? _dio;
 
-  Dio get dio => _dio;
+  Dio get dio {
+    if (_dio == null) initialize();
+    return _dio!;
+  }
 
   void initialize({String? token}) {
+    if (kDebugMode) {
+      debugPrint('ApiClient.initialize → baseUrl: ${AppConstants.baseUrl}');
+    }
+
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.baseUrl,
@@ -31,7 +39,7 @@ class ApiClient {
       ),
     );
 
-    _dio.interceptors.addAll([
+    _dio!.interceptors.addAll([
       AuthInterceptor(token: token),
       ErrorInterceptor(),
       LoggingInterceptor(),
@@ -39,7 +47,7 @@ class ApiClient {
   }
 
   void updateToken(String token) {
-    _dio.interceptors.removeWhere((i) => i is AuthInterceptor);
-    _dio.interceptors.add(AuthInterceptor(token: token));
+    _dio?.interceptors.removeWhere((i) => i is AuthInterceptor);
+    _dio?.interceptors.add(AuthInterceptor(token: token));
   }
 }

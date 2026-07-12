@@ -65,7 +65,7 @@ class _PopularMenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push(AppRoutes.menuDetailPath(item.id)),
+      onTap: () => context.push(AppRoutes.menuDetailPath(item.id.toString())),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -105,10 +105,7 @@ class _PopularMenuCard extends StatelessWidget {
                     children: [
                       RatingBadge(rating: item.rating),
                       const SizedBox(width: 4),
-                      Text(
-                        '(${_formatReviewCount(item.reviewCount)} reviews)',
-                        style: AppTextStyles.bodySmall,
-                      ),
+                      Text(item.categoryName, style: AppTextStyles.bodySmall),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -153,12 +150,5 @@ class _PopularMenuCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatReviewCount(int count) {
-    if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}k';
-    }
-    return '$count';
   }
 }

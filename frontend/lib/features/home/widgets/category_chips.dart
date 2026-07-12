@@ -38,7 +38,7 @@ class CategoryChips extends StatelessWidget {
                 separatorBuilder: (context, index) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final category = provider.categories[index];
-                  final isSelected = provider.selectedCategory == category.id;
+                  final isSelected = provider.selectedCategoryId == category.id;
                   return _CategoryChip(
                     label: category.name,
                     icon: category.icon,

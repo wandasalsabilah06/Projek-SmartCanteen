@@ -1,69 +1,139 @@
 import 'package:equatable/equatable.dart';
-import '../../cart/models/cart_item.dart';
+import '../../../core/constants/app_constants.dart';
 
-enum OrderStatus { pending, confirmed, preparing, ready, completed, cancelled }
-
-extension OrderStatusExtension on OrderStatus {
-  String get label {
-    switch (this) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Confirmed';
-      case OrderStatus.preparing:
-        return 'Preparing';
-      case OrderStatus.ready:
-        return 'Ready to Pick Up';
-      case OrderStatus.completed:
-        return 'Completed';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
+// ── Parse helpers ─────────────────────────────────────────────────────────────
+double _toDouble(dynamic v) {
+  if (v == null) return 0.0;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString()) ?? 0.0;
 }
 
-class Order extends Equatable {
-  final String id;
-  final String orderNumber;
-  final List<CartItem> items;
-  final OrderStatus status;
-  final double totalAmount;
-  final DateTime createdAt;
-  final String? note;
+int _toInt(dynamic v) {
+  if (v == null) return 0;
+  if (v is int) return v;
+  return int.tryParse(v.toString()) ?? 0;
+}
 
-  const Order({
+String _resolveImageUrl(String? raw) {
+  if (raw == null || raw.isEmpty) {
+    return AppConstants.placeholderFood;
+  }
+  if (raw.startsWith('http')) return raw;
+  final cleaned = raw.startsWith('/') ? raw.substring(1) : raw;
+  return '${AppConstants.baseUrl}/image/$cleaned';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class OrderDetailItem extends Equatable {
+  final int id;
+  final int menuId;
+  final String menuName;
+  final String menuImage;
+  final int qty;
+  final double harga;
+  final double subtotal;
+
+  const OrderDetailItem({
     required this.id,
-    required this.orderNumber,
-    required this.items,
-    required this.status,
-    required this.totalAmount,
-    required this.createdAt,
-    this.note,
+    required this.menuId,
+    required this.menuName,
+    required this.menuImage,
+    required this.qty,
+    required this.harga,
+    required this.subtotal,
   });
 
-  factory Order.fromJson(Map<String, dynamic> json) {
-    return Order(
-      id: json['id'] as String,
-      orderNumber: json['order_number'] as String,
-      items: (json['items'] as List<dynamic>)
-          .map(
-            (e) => CartItem(
-              menuItem: e['menu_item'],
-              quantity: e['quantity'] as int,
-              note: e['note'] as String?,
-            ),
-          )
-          .toList(),
-      status: OrderStatus.values.firstWhere(
-        (s) => s.name == json['status'],
-        orElse: () => OrderStatus.pending,
-      ),
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      note: json['note'] as String?,
+  factory OrderDetailItem.fromJson(Map<String, dynamic> json) {
+    final menu = json['menu'] as Map<String, dynamic>?;
+    return OrderDetailItem(
+      id: _toInt(json['id']),
+      menuId: _toInt(json['menu_id']),
+      menuName: (menu?['nama_menu'] as String?) ?? '',
+      menuImage: _resolveImageUrl(menu?['gambar'] as String?),
+      qty: _toInt(json['qty']),
+      harga: _toDouble(json['harga']),
+      subtotal: _toDouble(json['subtotal']),
     );
   }
 
   @override
-  List<Object?> get props => [id, orderNumber, status, totalAmount, createdAt];
+  List<Object?> get props => [id, menuId, qty];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum OrderStatus { pending, diproses, selesai, dibatalkan }
+
+extension OrderStatusX on OrderStatus {
+  String get label {
+    switch (this) {
+      case OrderStatus.pending:
+        return 'Pending';
+      case OrderStatus.diproses:
+        return 'Diproses';
+      case OrderStatus.selesai:
+        return 'Selesai';
+      case OrderStatus.dibatalkan:
+        return 'Dibatalkan';
+    }
+  }
+
+  static OrderStatus fromString(String v) {
+    switch (v.toLowerCase()) {
+      case 'diproses':
+        return OrderStatus.diproses;
+      case 'selesai':
+        return OrderStatus.selesai;
+      case 'dibatalkan':
+        return OrderStatus.dibatalkan;
+      default:
+        return OrderStatus.pending;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class Order extends Equatable {
+  final int id;
+  final String orderNumber;
+  final int userId;
+  final String userName;
+  final double totalHarga;
+  final OrderStatus status;
+  final DateTime tanggalOrder;
+  final List<OrderDetailItem> details;
+
+  const Order({
+    required this.id,
+    required this.orderNumber,
+    required this.userId,
+    required this.userName,
+    required this.totalHarga,
+    required this.status,
+    required this.tanggalOrder,
+    this.details = const [],
+  });
+
+  factory Order.fromJson(Map<String, dynamic> json) {
+    final rawDetails = json['order_details'] as List<dynamic>? ?? [];
+    return Order(
+      id: _toInt(json['id']),
+      orderNumber: 'SC-${json['id']}',
+      userId: _toInt(json['user_id']),
+      userName: (json['user'] as Map?)?['name'] as String? ?? '',
+      totalHarga: _toDouble(json['total_harga']),
+      status: OrderStatusX.fromString(json['status'] as String? ?? ''),
+      tanggalOrder: json['tanggal_order'] != null
+          ? DateTime.tryParse(json['tanggal_order'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      details: rawDetails
+          .map((e) => OrderDetailItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, status, totalHarga];
 }

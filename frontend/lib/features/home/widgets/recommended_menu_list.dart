@@ -86,7 +86,7 @@ class _RecommendedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push(AppRoutes.menuDetailPath(item.id)),
+      onTap: () => context.push(AppRoutes.menuDetailPath(item.id.toString())),
       child: Container(
         width: AppDimensions.menuCardWidth,
         decoration: BoxDecoration(

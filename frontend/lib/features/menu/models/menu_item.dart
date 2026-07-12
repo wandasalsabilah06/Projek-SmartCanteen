@@ -1,17 +1,16 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/constants/app_constants.dart';
 
 class MenuItem extends Equatable {
-  final String id;
+  final int id;
   final String name;
   final String description;
   final double price;
   final String imageUrl;
-  final String category;
+  final String categoryName;
+  final int categoryId;
+  final int stock;
   final double rating;
-  final int reviewCount;
-  final bool isAvailable;
-  final bool isFeatured;
-  final List<String> tags;
 
   const MenuItem({
     required this.id,
@@ -19,56 +18,74 @@ class MenuItem extends Equatable {
     required this.description,
     required this.price,
     required this.imageUrl,
-    required this.category,
-    this.rating = 0.0,
-    this.reviewCount = 0,
-    this.isAvailable = true,
-    this.isFeatured = false,
-    this.tags = const [],
+    required this.categoryName,
+    required this.categoryId,
+    this.stock = 0,
+    this.rating = 4.5,
   });
 
+  bool get isAvailable => stock > 0;
+
   factory MenuItem.fromJson(Map<String, dynamic> json) {
+    final category = json['category'] as Map<String, dynamic>?;
+
     return MenuItem(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      price: (json['price'] as num).toDouble(),
-      imageUrl: json['image_url'] as String,
-      category: json['category'] as String,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewCount: json['review_count'] as int? ?? 0,
-      isAvailable: json['is_available'] as bool? ?? true,
-      isFeatured: json['is_featured'] as bool? ?? false,
-      tags: (json['tags'] as List<dynamic>?)?.cast<String>() ?? [],
+      id: _toInt(json['id']),
+      name: (json['nama_menu'] as String?) ?? '',
+      description: (json['deskripsi'] as String?) ?? '',
+      price: _toDouble(json['harga']),
+      imageUrl: _resolveImageUrl(json['gambar_url'], json['gambar']),
+      categoryName: (category?['nama_kategori'] as String?) ?? '',
+      categoryId: _toInt(json['category_id']),
+      stock: _toInt(json['stok']),
+      rating: 4.5,
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'description': description,
-    'price': price,
-    'image_url': imageUrl,
-    'category': category,
-    'rating': rating,
-    'review_count': reviewCount,
-    'is_available': isAvailable,
-    'is_featured': isFeatured,
-    'tags': tags,
-  };
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
+  static int _toInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    return int.tryParse(v.toString()) ?? 0;
+  }
+
+  /// Bangun URL gambar yang bisa dibuka oleh Flutter Web maupun Mobile.
+  ///
+  /// Backend mengembalikan [gambarUrl] = full URL via /api/image/
+  /// Fallback ke [rawGambar] (path relatif) jika gambar_url tidak ada.
+  static String _resolveImageUrl(dynamic gambarUrl, dynamic rawGambar) {
+    // Prioritas 1: gambar_url dari backend (sudah full URL via /api/image/)
+    final url1 = gambarUrl?.toString() ?? '';
+    if (url1.isNotEmpty) return url1;
+
+    // Prioritas 2: gambar (path relatif) → buat URL via /api/image/
+    final raw = rawGambar?.toString() ?? '';
+    if (raw.isEmpty) return AppConstants.placeholderFood;
+
+    if (raw.startsWith('http')) return raw;
+
+    // Relative path "uploads/menus/xxx.jpg" → /api/image/uploads/menus/xxx.jpg
+    final cleaned = raw.startsWith('/') ? raw.substring(1) : raw;
+    return '${AppConstants.baseUrl}/image/$cleaned';
+  }
 
   MenuItem copyWith({
-    String? id,
+    int? id,
     String? name,
     String? description,
     double? price,
     String? imageUrl,
-    String? category,
+    String? categoryName,
+    int? categoryId,
+    int? stock,
     double? rating,
-    int? reviewCount,
-    bool? isAvailable,
-    bool? isFeatured,
-    List<String>? tags,
   }) {
     return MenuItem(
       id: id ?? this.id,
@@ -76,27 +93,13 @@ class MenuItem extends Equatable {
       description: description ?? this.description,
       price: price ?? this.price,
       imageUrl: imageUrl ?? this.imageUrl,
-      category: category ?? this.category,
+      categoryName: categoryName ?? this.categoryName,
+      categoryId: categoryId ?? this.categoryId,
+      stock: stock ?? this.stock,
       rating: rating ?? this.rating,
-      reviewCount: reviewCount ?? this.reviewCount,
-      isAvailable: isAvailable ?? this.isAvailable,
-      isFeatured: isFeatured ?? this.isFeatured,
-      tags: tags ?? this.tags,
     );
   }
 
   @override
-  List<Object?> get props => [
-    id,
-    name,
-    description,
-    price,
-    imageUrl,
-    category,
-    rating,
-    reviewCount,
-    isAvailable,
-    isFeatured,
-    tags,
-  ];
+  List<Object?> get props => [id, name, price, imageUrl, categoryId, stock];
 }
