@@ -69,7 +69,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
           ),
           // Category filter
           Consumer<MenuProvider>(
-            builder: (_, prov, __) {
+            builder: (context, prov, child) {
               if (prov.categories.isEmpty) return const SizedBox.shrink();
               return _CategoryFilter(provider: prov);
             },
@@ -87,7 +87,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (context, index) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     return _MenuListTile(item: items[index]);
                   },
@@ -134,7 +134,7 @@ class _SearchField extends StatelessWidget {
           ),
           suffixIcon: ValueListenableBuilder<TextEditingValue>(
             valueListenable: ctrl,
-            builder: (_, value, __) {
+            builder: (context, value, child) {
               if (value.text.isEmpty) return const SizedBox.shrink();
               return IconButton(
                 icon: const Icon(
@@ -283,7 +283,7 @@ class _MenuListTile extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Consumer<CartProvider>(
-                builder: (ctx, cart, _) {
+                builder: (context, cart, child) {
                   final inCart = cart.containsItem(item.id);
                   return GestureDetector(
                     onTap: item.isAvailable ? () => cart.addItem(item) : null,
@@ -360,8 +360,8 @@ class _ListSkeleton extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
       itemCount: 6,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, __) => Shimmer.fromColors(
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) => Shimmer.fromColors(
         baseColor: const Color(0xFFEEE8E2),
         highlightColor: const Color(0xFFF8F4F0),
         child: Container(

@@ -18,8 +18,7 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  int _deliveryMode = 0; // 0 = Delivery, 1 = Pickup
-  int _paymentMethod = 0; // 0 = Canteen Wallet, 1 = Digital Card
+  int _paymentMethod = 0; // 0 = Transfer Bank, 1 = QR Code, 2 = Bayar di Tempat
 
   Future<void> _confirmOrder() async {
     final auth = context.read<AuthProvider>();
@@ -33,14 +32,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    // Tentukan payment method
+    String paymentMethod = 'cash';
+    if (_paymentMethod == 0) paymentMethod = 'transfer';
+    if (_paymentMethod == 1) paymentMethod = 'qris';
+
+    // Buat order
     final order = await orderProvider.placeOrder(
       authProvider: auth,
       cartProvider: cart,
+      paymentMethod: paymentMethod,
     );
 
     if (!mounted) return;
 
     if (order != null) {
+      // Langsung ke tracking untuk semua metode pembayaran
       context.go(AppRoutes.orderTrackingPath(order.id.toString()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,25 +118,56 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Delivery / Pickup toggle
+            // Info Header - Nomor Antrian
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              height: 46,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0EBE6),
-                borderRadius: BorderRadius.circular(12),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFBF360C), Color(0xFFE65100)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
-                  _TabButton(
-                    label: 'Delivery',
-                    isActive: _deliveryMode == 0,
-                    onTap: () => setState(() => _deliveryMode = 0),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
-                  _TabButton(
-                    label: 'Pickup',
-                    isActive: _deliveryMode == 1,
-                    onTap: () => setState(() => _deliveryMode = 1),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ambil di Kantin',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Pesanan akan disiapkan & kamu akan dapat nomor antrian',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -142,93 +180,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   return ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Delivery Address
-                      _SectionCard(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Delivery Address',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {},
-                                        child: const Text(
-                                          'Change',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryLight,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.location_on_outlined,
-                                          color: AppColors.primary,
-                                          size: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Main Office – Tower A',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                          SizedBox(height: 2),
-                                          Text(
-                                            'Floor 4, Hub 22, Desk 402',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
                       // Order Summary
                       const Text(
-                        'Order Summary',
+                        'Ringkasan Pesanan',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -241,7 +195,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                       // Payment Method
                       const Text(
-                        'Payment Method',
+                        'Metode Pembayaran',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -249,27 +203,136 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _PaymentMethodCard(
-                              icon: Icons.account_balance_wallet_outlined,
-                              label: 'Canteen Wallet',
-                              isSelected: _paymentMethod == 0,
-                              onTap: () => setState(() => _paymentMethod = 0),
-                            ),
-                            const SizedBox(width: 12),
-                            _PaymentMethodCard(
-                              icon: Icons.credit_card_outlined,
-                              label: 'Digital Card',
-                              isSelected: _paymentMethod == 1,
-                              onTap: () => setState(() => _paymentMethod = 1),
-                            ),
-                          ],
-                        ),
+                      
+                      _PaymentMethodCard(
+                        icon: Icons.account_balance_outlined,
+                        label: 'Transfer Bank',
+                        subtitle: 'BCA, BNI, Mandiri, BRI',
+                        isSelected: _paymentMethod == 0,
+                        onTap: () => setState(() => _paymentMethod = 0),
+                      ),
+                      const SizedBox(height: 10),
+                      _PaymentMethodCard(
+                        icon: Icons.qr_code_rounded,
+                        label: 'Scan QR Code',
+                        subtitle: 'QRIS, Gopay, OVO, Dana',
+                        isSelected: _paymentMethod == 1,
+                        onTap: () => setState(() => _paymentMethod = 1),
+                      ),
+                      const SizedBox(height: 10),
+                      _PaymentMethodCard(
+                        icon: Icons.payments_outlined,
+                        label: 'Bayar di Tempat',
+                        subtitle: 'Bayar tunai saat ambil pesanan',
+                        isSelected: _paymentMethod == 2,
+                        onTap: () => setState(() => _paymentMethod = 2),
                       ),
                       const SizedBox(height: 20),
+
+                      // QRIS Display (jika metode QRIS dipilih)
+                      if (_paymentMethod == 1) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Scan QR Code untuk Pembayaran',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFE0E0E0),
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Placeholder QRIS - ganti dengan QR code real
+                                    Container(
+                                      width: 200,
+                                      height: 200,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Image.network(
+                                        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SmartCanteen_Payment_${DateTime.now().millisecondsSinceEpoch}',
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(
+                                          Icons.qr_code_2_rounded,
+                                          size: 100,
+                                          color: AppColors.textHint,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Scan dengan aplikasi e-wallet Anda',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Setelah transfer, klik Konfirmasi Pesanan',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+
+
 
                       // Bill summary
                       Container(
@@ -293,8 +356,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                             const SizedBox(height: 8),
                             _BillRow(
-                              label: 'Service Fee',
-                              value: CurrencyFormatter.toIDR(cart.deliveryFee),
+                              label: 'Biaya Admin',
+                              value: CurrencyFormatter.toIDR(0),
                             ),
                             const SizedBox(height: 12),
                             const Divider(color: Color(0xFFF0EBE6)),
@@ -303,7 +366,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text(
-                                  'Total Amount',
+                                  'Total Pembayaran',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -311,9 +374,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   ),
                                 ),
                                 Text(
-                                  CurrencyFormatter.toIDR(
-                                    cart.subtotal + cart.deliveryFee,
-                                  ),
+                                  CurrencyFormatter.toIDR(cart.subtotal),
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -373,7 +434,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                         )
                       : const Text(
-                          'Confirm Order',
+                          'Konfirmasi Pesanan',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -386,68 +447,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF8B3A1A) : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isActive ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  final Widget child;
-  const _SectionCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }
@@ -573,12 +572,14 @@ class _OrderSummaryItem extends StatelessWidget {
 class _PaymentMethodCard extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _PaymentMethodCard({
     required this.icon,
     required this.label,
+    this.subtitle,
     required this.isSelected,
     required this.onTap,
   });
@@ -588,43 +589,74 @@ class _PaymentMethodCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryLight : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? AppColors.primary : const Color(0xFFE8E0D8),
-            width: 1.5,
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
-                ),
-                overflow: TextOverflow.ellipsis,
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : const Color(0xFFF0EBE6),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(
+              isSelected 
+                  ? Icons.radio_button_checked 
+                  : Icons.radio_button_unchecked,
+              color: isSelected ? AppColors.primary : AppColors.textHint,
+              size: 24,
             ),
           ],
         ),

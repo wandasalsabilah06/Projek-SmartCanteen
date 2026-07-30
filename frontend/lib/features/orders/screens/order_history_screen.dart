@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,11 +23,18 @@ class OrderHistoryScreen extends StatefulWidget {
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      // Auto refresh setiap 15 detik untuk order list
+      _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+        _load();
+      });
+    });
   }
 
   Future<void> _load() async {
@@ -38,6 +46,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -57,7 +66,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               child: Row(
                 children: [
                   Consumer<AuthProvider>(
-                    builder: (_, auth, __) {
+                    builder: (context, auth, child) {
                       final u = auth.user;
                       return CircleAvatar(
                         radius: 22,
@@ -152,7 +161,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             // ── List ──────────────────────────────────────────────────────
             Expanded(
               child: Consumer<OrderProvider>(
-                builder: (context, op, _) {
+                builder: (context, op, child) {
                   if (op.isLoading) return const _OrderSkeleton();
 
                   final all = isHistory ? op.historyOrders : op.activeOrders;
@@ -201,22 +210,31 @@ class _OrderCard extends StatelessWidget {
     final cfg = _statusConfig(order.status);
     final isCancelled = order.status == OrderStatus.dibatalkan;
     final firstDetail = order.details.isNotEmpty ? order.details.first : null;
+    final canTrack = !isCancelled && !isHistory;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
+    return GestureDetector(
+      onTap: canTrack
+          ? () {
+              // Set current order and navigate to tracking
+              context.read<OrderProvider>().setCurrentOrder(order);
+              context.push(AppRoutes.orderTrackingPath(order.id.toString()));
+            }
+          : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +372,35 @@ class _OrderCard extends StatelessWidget {
                   ),
                   child: const Text('Detail'),
                 )
-              else
+              else ...[
+                OutlinedButton(
+                  onPressed: () {
+                    // Set current order before navigating
+                    context.read<OrderProvider>().setCurrentOrder(order);
+                    context.push(
+                      AppRoutes.orderTrackingPath(order.id.toString()),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  child: const Text(
+                    'Lacak',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () => context.go(AppRoutes.home),
                   style: ElevatedButton.styleFrom(
@@ -377,20 +423,28 @@ class _OrderCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
         ],
+      ),
       ),
     );
   }
 
   _SC _statusConfig(OrderStatus s) {
     switch (s) {
+      case OrderStatus.diambil:
+        return _SC(
+          'Diambil',
+          AppColors.statusCompleted,
+          AppColors.statusCompletedText,
+        );
       case OrderStatus.selesai:
         return _SC(
           'Selesai',
-          AppColors.statusCompleted,
-          AppColors.statusCompletedText,
+          AppColors.statusProcessing,
+          AppColors.statusProcessingText,
         );
       case OrderStatus.dibatalkan:
         return _SC(
@@ -492,7 +546,7 @@ class _OrderSkeleton extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
       itemCount: 4,
-      itemBuilder: (_, __) => Shimmer.fromColors(
+      itemBuilder: (context, index) => Shimmer.fromColors(
         baseColor: const Color(0xFFEEE8E2),
         highlightColor: const Color(0xFFF8F4F0),
         child: Container(

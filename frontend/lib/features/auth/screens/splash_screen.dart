@@ -117,7 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: Image.asset(
                           'assets/logoo.jpg',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(
+                          errorBuilder: (context, error, stackTrace) => const Center(
                             child: Icon(
                               Icons.restaurant,
                               size: 50,

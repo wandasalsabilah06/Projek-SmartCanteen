@@ -37,6 +37,7 @@
                                     'pending' => 'warning',
                                     'diproses' => 'info',
                                     'selesai' => 'success',
+                                    'diambil' => 'primary',
                                     'dibatalkan' => 'danger'
                                 ];
                             @endphp

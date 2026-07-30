@@ -14,13 +14,15 @@ class HomeProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   int get selectedCategoryId => _selectedCategoryId;
   List<MenuCategory> get categories => _categories;
+  bool get hasData => _allMenus.isNotEmpty;
 
-  /// 4 menu pertama sebagai "popular"
-  List<MenuItem> get popular => _allMenus.take(4).toList();
-
-  /// Semua menu tersedia sebagai "recommended"
-  List<MenuItem> get recommended =>
-      _allMenus.where((m) => m.isAvailable).toList();
+  // Menu populer hanya untuk kategori "Semua" (id = 0)
+  List<MenuItem> get popular {
+    if (_selectedCategoryId != 0) return [];
+    return _allMenus.take(4).toList();
+  }
+  
+  List<MenuItem> get recommended => _allMenus.skip(4).take(6).toList();
 
   List<MenuItem> get filteredMenus {
     if (_selectedCategoryId == 0) return _allMenus;
@@ -33,13 +35,23 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Re-init ApiClient agar baseUrl selalu fresh
+      ApiClient.instance.initialize();
+
+      if (kDebugMode) {
+        debugPrint(
+          'HomeProvider: loading from ${ApiClient.instance.dio.options.baseUrl}',
+        );
+      }
+
       final resp = await ApiClient.instance.dio.get('/menus');
       final list = resp.data as List<dynamic>;
+
       _allMenus = list
           .map((e) => MenuItem.fromJson(e as Map<String, dynamic>))
           .toList();
 
-      // Bangun kategori unik dari data menu — tidak butuh endpoint /categories
+      // Build kategori unik dari menu — tidak perlu endpoint /categories
       final catMap = <int, MenuCategory>{};
       for (final m in _allMenus) {
         if (m.categoryId > 0 && !catMap.containsKey(m.categoryId)) {
@@ -54,13 +66,12 @@ class HomeProvider extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          'HomeProvider: loaded ${_allMenus.length} menus, '
-          '${_categories.length} categories',
+          'HomeProvider: ${_allMenus.length} menus, ${_categories.length} categories',
         );
       }
     } catch (e) {
       _errorMessage = e.toString();
-      if (kDebugMode) debugPrint('HomeProvider.loadHomeData error: $e');
+      if (kDebugMode) debugPrint('HomeProvider error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -6,25 +6,28 @@ class AppConstants {
   static const String appName = 'SmartCanteen';
   static const String appVersion = '1.0.0';
 
-  // ── Ganti IP di sini sesuai platform ─────────────────────────────────────
-  // Flutter Web (browser)   : http://localhost:8000
-  // Android Emulator        : http://10.0.2.2:8000
-  // Android Device Fisik    : http://192.168.x.x:8000  ← ganti IP LAN kamu
-  // iOS Simulator           : http://localhost:8000
-  static const String _localIp = '10.0.2.2'; // ← ganti jika device fisik
+  // ── IP Backend ────────────────────────────────────────────────────────────
+  // Jalankan backend dengan: php artisan serve --host=0.0.0.0 --port=8000
+  //
+  // Ganti sesuai kondisi:
+  //   Android Device Fisik  → IP LAN komputer (cek dengan `ipconfig`)
+  //   Android Emulator      → 10.0.2.2
+  //   Browser/Web           → localhost (otomatis)
+  static const String _deviceIp = '10.167.140.64';
 
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000/api';
-    return 'http://$_localIp:8000/api';
+    return 'http://$_deviceIp:8000/api';
   }
 
   static String get imageBaseUrl {
     if (kIsWeb) return 'http://localhost:8000/';
-    return 'http://$_localIp:8000/';
+    return 'http://$_deviceIp:8000/';
   }
 
-  static const int connectTimeout = 15000;
-  static const int receiveTimeout = 15000;
+  // Timeout lebih longgar untuk jaringan WiFi lokal
+  static const int connectTimeout = 30000;
+  static const int receiveTimeout = 30000;
 
   // Storage keys
   static const String tokenKey = 'auth_token';

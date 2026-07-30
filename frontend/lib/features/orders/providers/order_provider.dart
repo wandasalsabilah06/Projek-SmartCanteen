@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -20,14 +21,16 @@ class OrderProvider extends ChangeNotifier {
   List<Order> get activeOrders => _orders
       .where(
         (o) =>
-            o.status == OrderStatus.pending || o.status == OrderStatus.diproses,
+            o.status == OrderStatus.pending || 
+            o.status == OrderStatus.diproses ||
+            o.status == OrderStatus.selesai,
       )
       .toList();
 
   List<Order> get historyOrders => _orders
       .where(
         (o) =>
-            o.status == OrderStatus.selesai ||
+            o.status == OrderStatus.diambil ||
             o.status == OrderStatus.dibatalkan,
       )
       .toList();
@@ -38,9 +41,10 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Gunakan endpoint yang benar: /orders/user/{userId}
-      final response = await ApiClient.instance.dio.get('/orders/user/$userId');
-      final data = response.data;
+      ApiClient.instance.initialize();
+      final resp = await ApiClient.instance.dio.get('/orders/user/$userId');
+      final data = resp.data;
+
       List<dynamic> list;
       if (data is List) {
         list = data;
@@ -49,9 +53,16 @@ class OrderProvider extends ChangeNotifier {
       } else {
         list = [];
       }
+
       _orders = list
           .map((e) => Order.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      if (kDebugMode) {
+        debugPrint(
+          'OrderProvider: loaded ${_orders.length} orders for user $userId',
+        );
+      }
     } catch (e) {
       _orders = [];
       _errorMessage = e.toString();
@@ -65,6 +76,7 @@ class OrderProvider extends ChangeNotifier {
   Future<Order?> placeOrder({
     required AuthProvider authProvider,
     required CartProvider cartProvider,
+    String paymentMethod = 'cash',
   }) async {
     if (authProvider.user == null) return null;
 
@@ -73,6 +85,8 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      ApiClient.instance.initialize();
+
       final items = cartProvider.items
           .map(
             (ci) => {
@@ -84,18 +98,18 @@ class OrderProvider extends ChangeNotifier {
           )
           .toList();
 
-      final response = await ApiClient.instance.dio.post(
+      final resp = await ApiClient.instance.dio.post(
         '/orders',
         data: {
           'user_id': authProvider.user!.id,
           'total_harga': cartProvider.subtotal,
+          'payment_method': paymentMethod,
           'items': items,
         },
       );
 
-      final responseData = response.data as Map<String, dynamic>;
-      final orderData = responseData['order'] as Map<String, dynamic>;
-      _currentOrder = Order.fromJson(orderData);
+      final body = resp.data as Map<String, dynamic>;
+      _currentOrder = Order.fromJson(body['order'] as Map<String, dynamic>);
       _orders.insert(0, _currentOrder!);
       cartProvider.clear();
       notifyListeners();
@@ -108,6 +122,158 @@ class OrderProvider extends ChangeNotifier {
     } finally {
       _isSubmitting = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> uploadPaymentProof(int orderId, String imagePath) async {
+    try {
+      ApiClient.instance.initialize();
+
+      if (kDebugMode) {
+        debugPrint('=== Uploading payment proof ===');
+        debugPrint('Order ID: $orderId');
+        debugPrint('Image path: $imagePath');
+      }
+
+      final formData = FormData.fromMap({
+        'payment_proof': await MultipartFile.fromFile(
+          imagePath,
+          filename: imagePath.split('/').last,
+        ),
+      });
+
+      final response = await ApiClient.instance.dio.post(
+        '/orders/$orderId/upload-payment-proof',
+        data: formData,
+      );
+
+      if (kDebugMode) {
+        debugPrint('✓ Upload response: ${response.data}');
+      }
+
+      // PENTING: Reload order detail setelah upload untuk mendapatkan payment_status terbaru
+      if (kDebugMode) {
+        debugPrint('Reloading order detail from API...');
+      }
+      
+      final order = await getOrderDetail(orderId);
+      
+      if (order != null) {
+        if (kDebugMode) {
+          debugPrint('=== Order Detail Retrieved ===');
+          debugPrint('Order ID: ${order.id}');
+          debugPrint('Payment Method: ${order.paymentMethod}');
+          debugPrint('Payment Proof URL: ${order.paymentProofUrl}');
+          debugPrint('Payment Status: ${order.paymentStatus}');
+          debugPrint('Payment Verified At: ${order.paymentVerifiedAt}');
+          debugPrint('Payment Rejection: ${order.paymentRejectionReason}');
+        }
+        
+        // Update order di list
+        final index = _orders.indexWhere((o) => o.id == orderId);
+        if (index != -1) {
+          _orders[index] = order;
+          if (kDebugMode) {
+            debugPrint('✓ Order updated in list at index $index');
+          }
+        }
+        _currentOrder = order;
+      } else {
+        if (kDebugMode) {
+          debugPrint('✗ Failed to get order detail after upload!');
+        }
+      }
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('OrderProvider.uploadPaymentProof error: $e');
+        if (e is DioException) {
+          debugPrint('DioException response: ${e.response?.data}');
+          debugPrint('DioException status: ${e.response?.statusCode}');
+        }
+      }
+      return false;
+    }
+  }
+
+  Future<Order?> getOrderDetail(int orderId) async {
+    try {
+      ApiClient.instance.initialize();
+      
+      if (kDebugMode) {
+        debugPrint('Fetching order detail for ID: $orderId');
+      }
+      
+      final resp = await ApiClient.instance.dio.get('/orders/$orderId');
+      
+      if (kDebugMode) {
+        debugPrint('Raw API response: ${resp.data}');
+      }
+      
+      final order = Order.fromJson(resp.data as Map<String, dynamic>);
+      
+      if (kDebugMode) {
+        debugPrint('✓ Order parsed successfully');
+      }
+      
+      return order;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('✗ OrderProvider.getOrderDetail error: $e');
+        if (e is DioException) {
+          debugPrint('Response data: ${e.response?.data}');
+          debugPrint('Status code: ${e.response?.statusCode}');
+        }
+      }
+      return null;
+    }
+  }
+
+  Future<bool> confirmOrderCollected(int orderId) async {
+    try {
+      ApiClient.instance.initialize();
+
+      if (kDebugMode) {
+        debugPrint('=== Confirming order collected ===');
+        debugPrint('Order ID: $orderId');
+      }
+
+      final response = await ApiClient.instance.dio.post(
+        '/orders/$orderId/confirm-collected',
+      );
+
+      if (kDebugMode) {
+        debugPrint('✓ Confirm response: ${response.data}');
+      }
+
+      // Reload order detail untuk mendapatkan status terbaru
+      final order = await getOrderDetail(orderId);
+      
+      if (order != null) {
+        // Update order di list
+        final index = _orders.indexWhere((o) => o.id == orderId);
+        if (index != -1) {
+          _orders[index] = order;
+          if (kDebugMode) {
+            debugPrint('✓ Order updated in list. New status: ${order.status.label}');
+          }
+        }
+        _currentOrder = order;
+      }
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('OrderProvider.confirmOrderCollected error: $e');
+        if (e is DioException) {
+          debugPrint('DioException response: ${e.response?.data}');
+          debugPrint('DioException status: ${e.response?.statusCode}');
+        }
+      }
+      return false;
     }
   }
 

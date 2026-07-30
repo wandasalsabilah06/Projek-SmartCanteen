@@ -5,6 +5,8 @@ import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 
+/// Singleton HTTP client.
+/// Panggil [initialize] sekali di awal atau setiap kali baseUrl berubah.
 class ApiClient {
   ApiClient._();
 
@@ -14,18 +16,18 @@ class ApiClient {
   Dio? _dio;
 
   Dio get dio {
+    // Auto-init jika belum ada
     if (_dio == null) initialize();
     return _dio!;
   }
 
   void initialize({String? token}) {
-    if (kDebugMode) {
-      debugPrint('ApiClient.initialize → baseUrl: ${AppConstants.baseUrl}');
-    }
+    final url = AppConstants.baseUrl;
+    if (kDebugMode) debugPrint('ApiClient → baseUrl: $url');
 
     _dio = Dio(
       BaseOptions(
-        baseUrl: AppConstants.baseUrl,
+        baseUrl: url,
         connectTimeout: const Duration(
           milliseconds: AppConstants.connectTimeout,
         ),
@@ -46,7 +48,7 @@ class ApiClient {
     ]);
   }
 
-  void updateToken(String token) {
+  void updateToken(String? token) {
     _dio?.interceptors.removeWhere((i) => i is AuthInterceptor);
     _dio?.interceptors.add(AuthInterceptor(token: token));
   }

@@ -39,14 +39,119 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      ApiClient.instance.initialize();
+
+      if (kDebugMode) {
+        debugPrint('Register → POST ${AppConstants.baseUrl}/register');
+        debugPrint('       name: $name');
+        debugPrint('       email: $email');
+      }
+
+      final response = await ApiClient.instance.dio.post(
+        '/register',
+        data: {
+          'name': name,
+          'email': email,
+          'password': password,
+          'password_confirmation': passwordConfirmation,
+        },
+      );
+
+      final data = response.data as Map<String, dynamic>;
+      final userMap = data['user'] as Map<String, dynamic>;
+      _user = User.fromJson(userMap);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(AppConstants.userKey, jsonEncode(_user!.toJson()));
+
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint('Register DioException:');
+        debugPrint('  type    : ${e.type}');
+        debugPrint('  message : ${e.message}');
+        debugPrint('  response: ${e.response?.data}');
+        debugPrint('  url     : ${e.requestOptions.uri}');
+      }
+
+      final body = e.response?.data;
+      String msg;
+
+      switch (e.type) {
+        case DioExceptionType.connectionError:
+          msg =
+              'Tidak dapat terhubung ke server.\n'
+              'Pastikan backend berjalan dan HP/komputer satu jaringan WiFi.';
+          break;
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+          msg = 'Koneksi timeout. Periksa jaringan WiFi dan coba lagi.';
+          break;
+        case DioExceptionType.badResponse:
+          if (e.response?.statusCode == 422) {
+            // Validation errors
+            if (body is Map && body['errors'] != null) {
+              final errors = body['errors'] as Map<String, dynamic>;
+              final firstError = errors.values.first;
+              msg = firstError is List && firstError.isNotEmpty
+                  ? firstError.first.toString()
+                  : body['message']?.toString() ?? 'Data tidak valid';
+            } else {
+              msg = body is Map && body['message'] != null
+                  ? body['message'].toString()
+                  : 'Data tidak valid';
+            }
+          } else {
+            msg = body is Map && body['message'] != null
+                ? body['message'].toString()
+                : 'Server error (${e.response?.statusCode})';
+          }
+          break;
+        default:
+          msg = body is Map && body['message'] != null
+              ? body['message'].toString()
+              : 'Terjadi kesalahan. Coba lagi.';
+      }
+
+      _errorMessage = msg;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Register unexpected: $e');
+      _errorMessage = 'Terjadi kesalahan tidak terduga.';
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> login({required String email, required String password}) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // Pastikan ApiClient sudah diinit
+      // Selalu reinit agar baseUrl terbaru dipakai
       ApiClient.instance.initialize();
+
+      if (kDebugMode) {
+        debugPrint('Login → POST ${AppConstants.baseUrl}/login');
+        debugPrint('       email: $email');
+      }
 
       final response = await ApiClient.instance.dio.post(
         '/login',
@@ -64,26 +169,45 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      // Baca pesan error dari response backend jika ada
-      final responseData = e.response?.data;
-      String msg;
-      if (responseData is Map && responseData['message'] != null) {
-        msg = responseData['message'].toString();
-      } else if (e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.unknown) {
-        msg =
-            'Tidak dapat terhubung ke server.\nPastikan backend berjalan di port 8000.';
-      } else if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        msg = 'Koneksi timeout. Coba lagi.';
-      } else {
-        msg = 'Email atau password salah';
+      if (kDebugMode) {
+        debugPrint('Login DioException:');
+        debugPrint('  type    : ${e.type}');
+        debugPrint('  message : ${e.message}');
+        debugPrint('  response: ${e.response?.data}');
+        debugPrint('  url     : ${e.requestOptions.uri}');
       }
 
-      if (kDebugMode) {
-        debugPrint(
-          'Login error: ${e.type} | ${e.message} | ${e.response?.data}',
-        );
+      final body = e.response?.data;
+      String msg;
+
+      switch (e.type) {
+        case DioExceptionType.connectionError:
+          msg =
+              'Tidak dapat terhubung ke server.\n'
+              'Pastikan:\n'
+              '• Backend berjalan (php artisan serve --host=0.0.0.0 --port=8000)\n'
+              '• HP dan komputer satu jaringan WiFi\n'
+              '• Firewall Windows mengizinkan port 8000';
+          break;
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+          msg = 'Koneksi timeout. Periksa jaringan WiFi dan coba lagi.';
+          break;
+        case DioExceptionType.badResponse:
+          if (e.response?.statusCode == 401) {
+            msg = body is Map && body['message'] != null
+                ? body['message'].toString()
+                : 'Email atau password salah';
+          } else {
+            msg = body is Map && body['message'] != null
+                ? body['message'].toString()
+                : 'Server error (${e.response?.statusCode})';
+          }
+          break;
+        default:
+          msg = body is Map && body['message'] != null
+              ? body['message'].toString()
+              : 'Terjadi kesalahan. Coba lagi.';
       }
 
       _errorMessage = msg;
@@ -91,8 +215,8 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      if (kDebugMode) debugPrint('Login unexpected error: $e');
-      _errorMessage = 'Terjadi kesalahan. Coba lagi.';
+      if (kDebugMode) debugPrint('Login unexpected: $e');
+      _errorMessage = 'Terjadi kesalahan tidak terduga.';
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;

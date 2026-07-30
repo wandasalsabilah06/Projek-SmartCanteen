@@ -16,9 +16,9 @@ class CartProvider extends ChangeNotifier {
 
   double get subtotal => _items.fold(0.0, (sum, item) => sum + item.subtotal);
 
-  double get deliveryFee => subtotal > 0 ? 5000 : 0;
+  // Tidak ada biaya delivery karena pesanan diambil langsung di kantin
   double get tax => subtotal * 0.05;
-  double get totalAmount => subtotal + deliveryFee + tax;
+  double get totalAmount => subtotal + tax;
 
   bool get isEmpty => _items.isEmpty;
 

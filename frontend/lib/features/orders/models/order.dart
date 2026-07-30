@@ -18,9 +18,26 @@ String _resolveImageUrl(String? raw) {
   if (raw == null || raw.isEmpty) {
     return AppConstants.placeholderFood;
   }
-  if (raw.startsWith('http')) return raw;
-  final cleaned = raw.startsWith('/') ? raw.substring(1) : raw;
-  return '${AppConstants.baseUrl}/image/$cleaned';
+  if (!raw.startsWith('http')) {
+    final cleaned = raw.startsWith('/') ? raw.substring(1) : raw;
+    return '${AppConstants.baseUrl}/image/$cleaned';
+  }
+  // Ganti localhost/127.0.0.1 ke IP yang benar agar bisa diakses dari HP
+  final uri = Uri.tryParse(raw);
+  if (uri != null &&
+      (uri.host == 'localhost' ||
+          uri.host == '127.0.0.1' ||
+          uri.host == '10.0.2.2')) {
+    final base = Uri.parse(AppConstants.imageBaseUrl);
+    return uri
+        .replace(
+          scheme: base.scheme,
+          host: base.host,
+          port: base.hasPort ? base.port : null,
+        )
+        .toString();
+  }
+  return raw;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +80,7 @@ class OrderDetailItem extends Equatable {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum OrderStatus { pending, diproses, selesai, dibatalkan }
+enum OrderStatus { pending, diproses, selesai, diambil, dibatalkan }
 
 extension OrderStatusX on OrderStatus {
   String get label {
@@ -74,6 +91,8 @@ extension OrderStatusX on OrderStatus {
         return 'Diproses';
       case OrderStatus.selesai:
         return 'Selesai';
+      case OrderStatus.diambil:
+        return 'Diambil';
       case OrderStatus.dibatalkan:
         return 'Dibatalkan';
     }
@@ -85,6 +104,8 @@ extension OrderStatusX on OrderStatus {
         return OrderStatus.diproses;
       case 'selesai':
         return OrderStatus.selesai;
+      case 'diambil':
+        return OrderStatus.diambil;
       case 'dibatalkan':
         return OrderStatus.dibatalkan;
       default:
@@ -104,6 +125,11 @@ class Order extends Equatable {
   final OrderStatus status;
   final DateTime tanggalOrder;
   final List<OrderDetailItem> details;
+  final String paymentMethod;
+  final String? paymentProofUrl;
+  final DateTime? paymentVerifiedAt;
+  final String? paymentRejectionReason;
+  final String paymentStatus;
 
   const Order({
     required this.id,
@@ -114,6 +140,11 @@ class Order extends Equatable {
     required this.status,
     required this.tanggalOrder,
     this.details = const [],
+    this.paymentMethod = 'cash',
+    this.paymentProofUrl,
+    this.paymentVerifiedAt,
+    this.paymentRejectionReason,
+    this.paymentStatus = 'belum_upload',
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -131,9 +162,23 @@ class Order extends Equatable {
       details: rawDetails
           .map((e) => OrderDetailItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      paymentMethod: json['payment_method'] as String? ?? 'cash',
+      paymentProofUrl: json['payment_proof_url'] as String?,
+      paymentVerifiedAt: json['payment_verified_at'] != null
+          ? DateTime.tryParse(json['payment_verified_at'] as String)
+          : null,
+      paymentRejectionReason: json['payment_rejection_reason'] as String?,
+      paymentStatus: json['payment_status'] as String? ?? 'belum_upload',
     );
   }
 
   @override
-  List<Object?> get props => [id, status, totalHarga];
+  List<Object?> get props => [
+        id,
+        status,
+        totalHarga,
+        paymentProofUrl,
+        paymentVerifiedAt,
+        paymentStatus,
+      ];
 }

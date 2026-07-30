@@ -10,31 +10,28 @@ class MenuController extends Controller
     public function index()
     {
         $menus = Menu::with('category')->get();
-
-        // Tambahkan gambar_url = full URL via /api/image/...
-        $menus->transform(fn ($menu) => $this->appendGambarUrl($menu));
-
+        $menus->transform(fn ($m) => $this->withImageUrl($m));
         return response()->json($menus);
     }
 
     public function show($id)
     {
         $menu = Menu::with('category')->findOrFail($id);
-        $this->appendGambarUrl($menu);
+        $this->withImageUrl($menu);
         return response()->json($menu);
     }
 
     /**
-     * Tambahkan atribut gambar_url ke model menu.
-     * URL diarahkan ke endpoint /api/image/ agar Flutter Web mendapat CORS header.
+     * Tambahkan gambar_url ke menu — arahkan ke /api/image/ agar dapat CORS header.
+     * APP_URL wajib di-set ke http://192.168.100.163:8000 di .env
+     * agar URL valid dari device fisik.
      */
-    private function appendGambarUrl(Menu $menu): Menu
+    private function withImageUrl(Menu $menu): Menu
     {
         if (empty($menu->gambar)) {
             $menu->gambar_url = null;
         } else {
-            // Buat URL via /api/image/ bukan langsung ke /uploads/
-            // sehingga CORS header selalu ada
+            // url() akan pakai APP_URL dari .env
             $menu->gambar_url = url('/api/image/' . ltrim($menu->gambar, '/'));
         }
         return $menu;

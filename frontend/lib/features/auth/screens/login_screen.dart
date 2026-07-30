@@ -165,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Image.asset(
                           'assets/logoo.jpg',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (context, error, stackTrace) => const Icon(
                             Icons.restaurant,
                             size: 38,
                             color: _orange,
@@ -294,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Error banner
                       Consumer<AuthProvider>(
-                        builder: (_, auth, __) {
+                        builder: (context, auth, child) {
                           final msg = auth.errorMessage;
                           if (msg == null) return const SizedBox.shrink();
                           return Container(
@@ -334,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Tombol Sign In
                       Consumer<AuthProvider>(
-                        builder: (_, auth, __) {
+                        builder: (context, auth, child) {
                           final loading = auth.status == AuthStatus.loading;
                           return SizedBox(
                             width: double.infinity,
@@ -379,6 +379,41 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 20),
+
+                // Link ke registrasi
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Belum punya akun?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _textGrey,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () {
+                        final uri = GoRouterState.of(context).uri;
+                        final from = uri.queryParameters['from'];
+                        if (from != null && from.isNotEmpty) {
+                          context.go('${AppRoutes.register}?from=$from');
+                        } else {
+                          context.go(AppRoutes.register);
+                        }
+                      },
+                      child: const Text(
+                        'Daftar di sini',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _orange,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
 

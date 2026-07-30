@@ -22,8 +22,6 @@ class CartScreen extends StatelessWidget {
               children: [
                 // AppBar
                 _CartAppBar(cart: cart),
-                // Delivery bar
-                const _DeliveryBar(),
                 // Content
                 Expanded(
                   child: cart.isEmpty
@@ -110,84 +108,6 @@ class _CartAppBar extends StatelessWidget {
             child: const Text(
               'Hapus',
               style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Delivery Bar ─────────────────────────────────────────────────────────────
-class _DeliveryBar extends StatelessWidget {
-  const _DeliveryBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.location_on_outlined,
-              color: AppColors.primary,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'DIANTARKAN KE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textHint,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Gedung B, Lantai 4 • Meja 42',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {},
-            child: const Text(
-              'Ubah',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
             ),
           ),
         ],
@@ -445,11 +365,6 @@ class _BillSummaryCard extends StatelessWidget {
           _BillRow(
             label: 'Subtotal',
             value: CurrencyFormatter.toIDR(cart.subtotal),
-          ),
-          const SizedBox(height: 8),
-          _BillRow(
-            label: 'Biaya Pengiriman',
-            value: CurrencyFormatter.toIDR(cart.deliveryFee),
           ),
           const SizedBox(height: 8),
           _BillRow(

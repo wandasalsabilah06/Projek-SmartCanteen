@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/cart/screens/cart_screen.dart';
 import '../../features/checkout/screens/checkout_screen.dart';
@@ -23,43 +24,36 @@ class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
   static final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-  // Route yang membutuhkan login
-  static const _authRequired = [
+  /// Route yang WAJIB login — prefix-match
+  static const _protected = [
     '/cart',
     '/checkout',
     '/orders',
     '/history',
     '/profile',
-    '/order',
+    '/order/',
   ];
 
-  static bool _needsAuth(String location) {
-    return _authRequired.any((r) => location.startsWith(r));
-  }
+  static bool _needsAuth(String loc) =>
+      _protected.any((p) => loc.startsWith(p));
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
 
-    // ── Redirect guard ───────────────────────────────────────────────────────
     redirect: (context, state) {
-      final location = state.matchedLocation;
+      final loc = state.matchedLocation;
 
-      // Splash & login tidak perlu dicek
-      if (location == AppRoutes.splash || location == AppRoutes.login) {
-        return null;
-      }
+      // Halaman publik — tidak perlu cek auth
+      if (loc == AppRoutes.splash || loc == AppRoutes.login || loc == AppRoutes.register) return null;
 
-      // Cek apakah route perlu login
-      if (_needsAuth(location)) {
-        final authProvider = Provider.of<AuthProvider>(
-          _rootNavigatorKey.currentContext!,
-          listen: false,
-        );
-        if (!authProvider.isAuthenticated) {
-          // Simpan tujuan asal agar bisa balik setelah login
-          return '${AppRoutes.login}?from=${Uri.encodeComponent(location)}';
+      if (_needsAuth(loc)) {
+        // Gunakan context GoRouter (aman, tidak null)
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        if (!auth.isAuthenticated) {
+          final encoded = Uri.encodeComponent(loc);
+          return '${AppRoutes.login}?from=$encoded';
         }
       }
 
@@ -68,35 +62,27 @@ class AppRouter {
 
     routes: [
       // Splash
-      GoRoute(
-        path: AppRoutes.splash,
-        builder: (context, state) => const SplashScreen(),
-      ),
+      GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
 
       // Login
-      GoRoute(
-        path: AppRoutes.login,
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: AppRoutes.login, builder: (context, state) => const LoginScreen()),
 
-      // ── Main Shell — Home, Orders, History, Profile ─────────────────────
+      // Register
+      GoRoute(path: AppRoutes.register, builder: (context, state) => const RegisterScreen()),
+
+      // ── Shell: Home / Orders / History / Profile ─────────────────────────
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
-          GoRoute(
-            path: AppRoutes.home,
-            builder: (context, state) => const HomeScreen(),
-          ),
+          GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
           GoRoute(
             path: AppRoutes.orders,
-            builder: (context, state) =>
-                const OrderHistoryScreen(showActive: true),
+            builder: (context, state) => const OrderHistoryScreen(showActive: true),
           ),
           GoRoute(
             path: AppRoutes.history,
-            builder: (context, state) =>
-                const OrderHistoryScreen(showActive: false),
+            builder: (context, state) => const OrderHistoryScreen(showActive: false),
           ),
           GoRoute(
             path: AppRoutes.profile,
@@ -108,49 +94,38 @@ class AppRouter {
       // Menu Detail
       GoRoute(
         path: AppRoutes.menuDetail,
-        builder: (context, state) {
-          final menuId = state.pathParameters['id']!;
-          return MenuDetailScreen(menuId: menuId);
-        },
+        builder: (context, state) =>
+            MenuDetailScreen(menuId: state.pathParameters['id']!),
       ),
 
       // Menu List
       GoRoute(
         path: AppRoutes.menuList,
-        builder: (context, state) {
-          final category = state.uri.queryParameters['category'];
-          return MenuListScreen(category: category);
-        },
+        builder: (context, state) =>
+            MenuListScreen(category: state.uri.queryParameters['category']),
       ),
 
-      // Cart (butuh login)
-      GoRoute(
-        path: AppRoutes.cart,
-        builder: (context, state) => const CartScreen(),
-      ),
+      // Cart (protected)
+      GoRoute(path: AppRoutes.cart, builder: (context, state) => const CartScreen()),
 
-      // Checkout (butuh login)
+      // Checkout (protected)
       GoRoute(
         path: AppRoutes.checkout,
         builder: (context, state) => const CheckoutScreen(),
       ),
 
-      // Order Tracking (butuh login)
+      // Order Tracking (protected)
       GoRoute(
         path: AppRoutes.orderTracking,
-        builder: (context, state) {
-          final orderId = state.pathParameters['id']!;
-          return OrderTrackingScreen(orderId: orderId);
-        },
+        builder: (context, state) =>
+            OrderTrackingScreen(orderId: state.pathParameters['id']!),
       ),
 
-      // Order Pickup (butuh login)
+      // Order Pickup (protected)
       GoRoute(
         path: AppRoutes.orderPickup,
-        builder: (context, state) {
-          final orderId = state.pathParameters['id']!;
-          return OrderPickupScreen(orderId: orderId);
-        },
+        builder: (context, state) =>
+            OrderPickupScreen(orderId: state.pathParameters['id']!),
       ),
     ],
   );

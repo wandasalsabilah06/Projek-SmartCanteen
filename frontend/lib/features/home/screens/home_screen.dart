@@ -47,26 +47,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   SliverToBoxAdapter(child: _HomeSearchBar()),
                   SliverToBoxAdapter(child: _HomeCategoryRow(home: home)),
                   const SliverToBoxAdapter(child: _HomePromoBanner()),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                      child: SectionHeader(
-                        title: 'Menu Populer',
-                        actionLabel: 'Lihat Semua',
-                        onAction: () => context.push(AppRoutes.menuList),
+                  // Menu Populer hanya tampil saat kategori "Semua" (id = 0)
+                  if (home.selectedCategoryId == 0) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                        child: SectionHeader(
+                          title: 'Menu Populer',
+                          actionLabel: 'Lihat Semua',
+                          onAction: () => context.push(AppRoutes.menuList),
+                        ),
                       ),
                     ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: home.isLoading
-                        ? _HomePopularSkeleton()
-                        : _HomePopularRow(items: home.popular),
-                  ),
+                    SliverToBoxAdapter(
+                      child: home.isLoading
+                          ? _HomePopularSkeleton()
+                          : _HomePopularRow(items: home.popular),
+                    ),
+                  ],
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
                       child: SectionHeader(
-                        title: 'Semua Menu',
+                        title: home.selectedCategoryId == 0 
+                            ? 'Semua Menu' 
+                            : home.categories
+                                .firstWhere(
+                                  (c) => c.id == home.selectedCategoryId,
+                                  orElse: () => MenuCategory.allCategory,
+                                )
+                                .name,
                         actionLabel: 'Lihat Semua',
                         onAction: () => context.push(AppRoutes.menuList),
                       ),
@@ -77,6 +87,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (_, i) => const _HomeMenuSkeleton(),
                         childCount: 4,
+                      ),
+                    )
+                  else if (home.errorMessage != null)
+                    SliverToBoxAdapter(
+                      child: _HomeErrorState(
+                        message: home.errorMessage!,
+                        onRetry: home.loadHomeData,
                       ),
                     )
                   else if (home.filteredMenus.isEmpty)
@@ -842,6 +859,81 @@ class _HomeMenuSkeleton extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error State ───────────────────────────────────────────────────────────────
+class _HomeErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _HomeErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final isNetwork =
+        message.toLowerCase().contains('connection') ||
+        message.toLowerCase().contains('socket') ||
+        message.toLowerCase().contains('timeout') ||
+        message.toLowerCase().contains('failed');
+
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF0EB),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: AppColors.primary,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Tidak dapat memuat menu',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isNetwork
+                  ? 'Pastikan HP dan komputer terhubung ke\njaringan WiFi yang sama, lalu coba lagi.'
+                  : message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ],
         ),
       ),
     );

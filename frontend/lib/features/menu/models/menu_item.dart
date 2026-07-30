@@ -28,7 +28,6 @@ class MenuItem extends Equatable {
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
     final category = json['category'] as Map<String, dynamic>?;
-
     return MenuItem(
       id: _toInt(json['id']),
       name: (json['nama_menu'] as String?) ?? '',
@@ -42,7 +41,7 @@ class MenuItem extends Equatable {
     );
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Parse helpers ───────────────────────────────────────────────────────────
 
   static double _toDouble(dynamic v) {
     if (v == null) return 0.0;
@@ -56,24 +55,57 @@ class MenuItem extends Equatable {
     return int.tryParse(v.toString()) ?? 0;
   }
 
-  /// Bangun URL gambar yang bisa dibuka oleh Flutter Web maupun Mobile.
+  /// Resolusi URL gambar:
   ///
-  /// Backend mengembalikan [gambarUrl] = full URL via /api/image/
-  /// Fallback ke [rawGambar] (path relatif) jika gambar_url tidak ada.
-  static String _resolveImageUrl(dynamic gambarUrl, dynamic rawGambar) {
-    // Prioritas 1: gambar_url dari backend (sudah full URL via /api/image/)
-    final url1 = gambarUrl?.toString() ?? '';
-    if (url1.isNotEmpty) return url1;
+  /// Backend mungkin return gambar_url dengan host `localhost` (karena APP_URL
+  /// belum tentu cocok saat dijalankan via HP fisik). Flutter harus replace
+  /// host tersebut dengan `_deviceIp` agar bisa diakses dari HP.
+  static String _resolveImageUrl(dynamic gambarUrl, dynamic gambar) {
+    // 1. Prioritas: gambar_url (full URL dari backend)
+    String raw = (gambarUrl?.toString() ?? '').trim();
 
-    // Prioritas 2: gambar (path relatif) → buat URL via /api/image/
-    final raw = rawGambar?.toString() ?? '';
+    // 2. Fallback: field gambar (relative path)
+    if (raw.isEmpty) {
+      raw = (gambar?.toString() ?? '').trim();
+    }
+
     if (raw.isEmpty) return AppConstants.placeholderFood;
 
-    if (raw.startsWith('http')) return raw;
+    // Jika relative path → jadikan full URL via /api/image/
+    if (!raw.startsWith('http')) {
+      final cleaned = raw.startsWith('/') ? raw.substring(1) : raw;
+      return '${AppConstants.baseUrl}/image/$cleaned';
+    }
 
-    // Relative path "uploads/menus/xxx.jpg" → /api/image/uploads/menus/xxx.jpg
-    final cleaned = raw.startsWith('/') ? raw.substring(1) : raw;
-    return '${AppConstants.baseUrl}/image/$cleaned';
+    // Jika full URL tapi host-nya localhost/127.0.0.1 → replace ke IP yang benar
+    // agar bisa diakses dari HP fisik
+    raw = _fixHost(raw);
+    return raw;
+  }
+
+  /// Ganti host localhost/127.0.0.1 ke baseUrl yang benar untuk platform ini.
+  static String _fixHost(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return url;
+
+    final needsFix =
+        uri.host == 'localhost' ||
+        uri.host == '127.0.0.1' ||
+        uri.host == '10.0.2.2';
+
+    if (!needsFix) return url;
+
+    final correctBase =
+        AppConstants.imageBaseUrl; // e.g. http://192.168.100.163:8000/
+    final correctUri = Uri.parse(correctBase);
+
+    return uri
+        .replace(
+          scheme: correctUri.scheme,
+          host: correctUri.host,
+          port: correctUri.hasPort ? correctUri.port : null,
+        )
+        .toString();
   }
 
   MenuItem copyWith({

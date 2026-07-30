@@ -41,19 +41,19 @@ class MenuProvider extends ChangeNotifier {
     return result;
   }
 
-  /// Bangun daftar kategori unik dari list menu (tidak perlu endpoint /categories)
-  void _buildCategoriesFromItems() {
-    final catMap = <int, MenuCategory>{};
+  /// Bangun kategori dari data menu — tidak perlu endpoint terpisah
+  void _buildCategories() {
+    final map = <int, MenuCategory>{};
     for (final m in _items) {
-      if (m.categoryId > 0 && !catMap.containsKey(m.categoryId)) {
-        catMap[m.categoryId] = MenuCategory(
+      if (m.categoryId > 0 && !map.containsKey(m.categoryId)) {
+        map[m.categoryId] = MenuCategory(
           id: m.categoryId,
           name: m.categoryName,
           icon: MenuCategory.iconForName(m.categoryName),
         );
       }
     }
-    _categories = catMap.values.toList();
+    _categories = map.values.toList();
   }
 
   Future<void> loadMenuItems({int? categoryId, String? category}) async {
@@ -63,13 +63,13 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiClient.instance.dio.get('/menus');
-      final list = response.data as List<dynamic>;
+      ApiClient.instance.initialize();
+      final resp = await ApiClient.instance.dio.get('/menus');
+      final list = resp.data as List<dynamic>;
       _items = list
           .map((e) => MenuItem.fromJson(e as Map<String, dynamic>))
           .toList();
-      // Bangun kategori dari menu (tidak perlu endpoint terpisah)
-      _buildCategoriesFromItems();
+      _buildCategories();
     } catch (e) {
       _errorMessage = e.toString();
       if (kDebugMode) debugPrint('MenuProvider.loadMenuItems error: $e');
@@ -85,8 +85,9 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiClient.instance.dio.get('/menus/$id');
-      _selectedItem = MenuItem.fromJson(response.data as Map<String, dynamic>);
+      ApiClient.instance.initialize();
+      final resp = await ApiClient.instance.dio.get('/menus/$id');
+      _selectedItem = MenuItem.fromJson(resp.data as Map<String, dynamic>);
     } catch (e) {
       _errorMessage = e.toString();
       if (kDebugMode) debugPrint('MenuProvider.loadMenuDetail error: $e');
